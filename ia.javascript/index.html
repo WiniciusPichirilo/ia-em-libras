@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign Language Translator</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #video {
+            width: 100%;
+            max-width: 640px;
+        }
+
+        #translatedText {
+            margin-top: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+    </style>
+    <style>
+        /* Adicione aqui o seu CSS adicional */
+        .moving-image {
+            /* Estilos para a imagem que se move */
+        }
+    </style>
+</head>
+<body>
+    <video id="video" playsinline></video>
+    <div id="translatedText"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script>
+        const video = document.getElementById('video');
+        const translatedTextElement = document.getElementById('translatedText');
+        let translatedText = "";
+
+        const mediaPipeHands = new MediaPipeHands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        mediaPipeHands.setOptions({
+            selfieMode: false,
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+
+        mediaPipeHands.onResults(handleHandResults);
+
+        navigator.mediaDevices.getUserMedia({ video: true })
+            .then((stream) => {
+                video.srcObject = stream;
+                mediaPipeHands.setStream(video.srcObject);
+            });
+
+        function handleHandResults(results) {
+            const landmarks = results.multiHandLandmarks;
+            if (landmarks) {
+                const indexFingerTip = landmarks[0][8];
+                const middleFingerTip = landmarks[0][12];
+
+                const gesture = getGesture(indexFingerTip, middleFingerTip);
+                translateGesture(gesture);
+                moveImageBasedOnGesture(gesture);
+            }
+        }
+
+        function getGesture(indexFingerTip, middleFingerTip) {
+            const distance = Math.sqrt(
+                Math.pow(indexFingerTip.x - middleFingerTip.x, 2) +
+                Math.pow(indexFingerTip.y - middleFingerTip.y, 2)
+            );
+
+            return distance < 0.05 ? 'A' : 'B';
+        }
+
+        async function translateGesture(gesture) {
+            // Adapte esta função para chamar um serviço de tradução real
+            translatedText = await callTranslationService(gesture);
+            translatedTextElement.textContent = "Tradução: " + translatedText;
+        }
+
+        async function callTranslationService(text) {
+            // Adapte esta função para chamar o serviço de tradução real
+            const apiKey = 'SUA_CHAVE_API'; // Substitua 'SUA_CHAVE_API' pela sua chave de API válida
+
+            const url = 'https://translation.googleapis.com/language/translate/v2';
+            const targetLanguage = 'pt'; // Idioma de destino (português)
+
+            try {
+                const response = await fetch(`${url}?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        q: text,
+                        source: 'auto', // Detecta o idioma automaticamente
+                        target: targetLanguage,
+                    }),
+                });
+
+                const result = await response.json();
+
+                if (result && result.data && result.data.translations && result.data.translations[0]) {
+                    return result.data.translations[0].translatedText;
+                } else {
+                    throw new Error('Erro na tradução.');
+                }
+            } catch (error) {
+                console.error('Erro na chamada do serviço de tradução:', error);
+                return 'Erro na tradução';
+            }
+        }
+
+        function moveImageBasedOnGesture(gesture) {
+            // Adapte esta função conforme necessário para mover sua imagem com base no gesto
+            // Aqui, um exemplo simples de mover para a direita quando o gesto 'A' é detectado
+            const movingImage = document.getElementById('movingImage');
+            if (gesture === 'A') {
+                movingImage.style.transform = 'translateX(50px)';
+            } else {
+                movingImage.style.transform = 'translateX(0)';
+            }
+        }
+    </script>
+</body>
+</html>
